@@ -1,17 +1,13 @@
 import json
-import os
-
-from time import sleep
 
 from kafka import KafkaConsumer, KafkaProducer
 
 from settings import kafka_params
 from src.main.manager import CacheManager, ObjectManager
 from src.main.parser import ResultParser
-from sqlalchemy import create_engine
+
 
 class ResultLoader():
-
     cacheManager = CacheManager()
     objectManager = ObjectManager()
     kafkaConsumer = KafkaConsumer(**kafka_params)
@@ -35,4 +31,3 @@ class ResultLoader():
             feed = message.topic.split("-")[0]
             row = ResultParser(feedName=feed, source=message.value).parseRow()
             self.objectManager.prepareRow(name=feed, row=row)
-

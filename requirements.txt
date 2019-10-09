@@ -4,3 +4,4 @@ hazelcast-python-client
 beautifulsoup4
 slimit
 requests
+pandas

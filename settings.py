@@ -19,7 +19,7 @@ hazelcast_params = {
 database_parameters = {
     "host": os.getenv("DATABSE_HOST", "localhost"),
     "port": os.getenv("DATABASE_PORT", 5432),
-    "database": "postgres",
-    "user": "postgres",
-    "password": "postgres"
+    "database": os.getenv("DATABASE_NAME", "postgres"),
+    "user": os.getenv("DATABASE_USER", "postgres"),
+    "password": os.getenv("DATABASE_PASS", "postgres"),
 }
