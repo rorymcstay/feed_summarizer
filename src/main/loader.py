@@ -1,4 +1,5 @@
 import json
+import os
 
 from kafka import KafkaConsumer, KafkaProducer
 import logging
@@ -11,7 +12,7 @@ class ResultLoader():
    # cacheManager = CacheManager()
     objectManager = ObjectManager()
     kafkaConsumer = KafkaConsumer(**kafka_params)
-    markets = ".*-results"
+    markets = f'.*-{kafka_params["topics"]}'
 
     producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 

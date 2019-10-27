@@ -1,6 +1,8 @@
 import json
 import logging
 from datetime import datetime
+
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 
 import hazelcast
@@ -34,12 +36,12 @@ class CacheManager:
 class ObjectManager:
     logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
     dsn = 'postgresql://{user}:{password}@{host}:{port}/{database}'.format(**database_parameters)
-    client: connection = create_engine(dsn)
+    client: Engine = create_engine(dsn)
     client.autocommit = True
     numberFields = {}
     batch_size = 100
-
-    batches: pd.DataFrame = {}
+    batches = dict()
+    failedBatches = dict()
 
     def _generateTable(self, name, number_fields):
         self.numberFields.update({name: number_fields})
@@ -51,8 +53,7 @@ class ObjectManager:
             {fields}
         )
         """.format(fields=",\n      ".join(list(fields)), name=name, number_fields=number_fields)
-        c = self.client.cursor()
-        c.execute(definition)
+        self.client.execute(definition)
 
     def prepareRow(self, name, row):
         if name not in self.batches.keys():
@@ -67,23 +68,25 @@ class ObjectManager:
         self.batches[name] = self.batches[name].set_index(['url'])
         self.batches[name]['added'] = datetime.now()
         try:
-            self.batches[name].to_sql('t_stg_{}_results{appendix}'.format(name,
+            self.batches[name].to_sql('t_{}_{}_results{appendix}'.format(name, database_parameters.get("prefix"),
                                                                           appendix=database_parameters.get(
-                                                                              "appendix")),
+                                                                              "postfix")),
                                       con=self.client,
                                       if_exists='append')
         except ProgrammingError as e:
-            self.handleFailedBatch(name, e)
-            self.insertBatch(name)
+            if self.handleFailedBatch(name, e):
+                self.insertBatch(name)
         self.batches[name] = pd.DataFrame()
 
-    def handleFailedBatch(self, name, e):
+    def handleFailedBatch(self, name, e, attempts=0):
+        if attempts > 5:
+            self.failedBatches[name] = self.failedBatches[name].append(self.batches[name])
+            return False
         table_name = 't_stg_{}_results{appendix}'.format(name, appendix=database_parameters.get("appendix"))
-        c = self.client.cursor()
         string = e.args[0]
-        columns_to_add = list(filter(lambda: name == table_name, list(filter(lambda s: " " not in s, string.split('"')))))
+        columns_to_add = list(filter(lambda na: na == table_name, list(filter(lambda s: " " not in s, string.split('"')))))
         cols = ",\n".join([f'add column {col} text' for col in columns_to_add])
         query = f'alter table {table_name} \n {cols}'
         logging.warning(f'failed batch, adding column {columns_to_add} to {table_name}')
-        c.execute(query)
-        c.commit()
+        self.client.execute(query)
+        return True

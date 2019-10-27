@@ -10,6 +10,7 @@ nanny_params = {
 
 kafka_params = {
     "bootstrap_servers": [os.getenv("KAFKA_ADDRESS", "localhost:29092")],
+    "topics": os.getenv("TOPICS", "results")
 }
 
 hazelcast_params = {
@@ -22,5 +23,6 @@ database_parameters = {
     "database": os.getenv("DATABASE_NAME", "feeds"),
     "user": os.getenv("DATABASE_USER", "feeds"),
     "password": os.getenv("DATABASE_PASS", "feeds"),
-    "appendix": ""
+    "prefix": os.getenv("PREFIX", "stg"),
+    "postix": ""
 }
