@@ -1,28 +1,20 @@
 import json
 import logging
 from datetime import datetime
+from sqlalchemy.exc import ProgrammingError
 
 import hazelcast
 import pandas as pd
 import psycopg2
-from hazelcast import ClientConfig, HazelcastClient
+# from hazelcast import ClientConfig, HazelcastClient
 from hazelcast.core import HazelcastJsonValue
 from psycopg2._psycopg import connection
 from sqlalchemy import create_engine
 
-from settings import hazelcast_params, database_parameters
-
-config = hazelcast.ClientConfig()
-
-config.network_config.addresses.append('127.0.0.1')
-config.network_config.addresses.append('192.168.1.99')
-config.network_config.addresses.append('localhost:5702')
+from settings import database_parameters
 
 
 class CacheManager:
-    config = ClientConfig()
-    config.network_config.addresses.append("{host}:{port}".format(**hazelcast_params))
-    client = HazelcastClient(config)
 
     def insertResult(self, name, result, key):
         """
@@ -30,15 +22,19 @@ class CacheManager:
 
         :return:
         """
+        pass
 
-        map = self.client.get_map(name)
-        map.put(key=key, value=HazelcastJsonValue(json.dumps(result)))
 
-        logging.debug('inserted object result {}'.format(key))
+#       map = self.client.get_map(name)
+#       map.put(key=key, value=HazelcastJsonValue(json.dumps(result)))
+
+#       logging.debug('inserted object result {}'.format(key))
 
 
 class ObjectManager:
-    client: connection = psycopg2.connect(**database_parameters)
+    logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
+    dsn = 'postgresql://{user}:{password}@{host}:{port}/{database}'.format(**database_parameters)
+    client: connection = create_engine(dsn)
     client.autocommit = True
     numberFields = {}
     batch_size = 100
@@ -58,19 +54,36 @@ class ObjectManager:
         c = self.client.cursor()
         c.execute(definition)
 
-
     def prepareRow(self, name, row):
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
-        engine = create_engine('postgresql://postgres:postgres@localhost:5432/postgres')
+
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
+        logging.info("row prepared: {}".format(row))
+
+    def insertBatch(self, name, batchCheck=True):
+        if (batchCheck and len(self.batches[name]) < self.batch_size):
+            return
+        self.batches[name] = self.batches[name].set_index(['url'])
+        self.batches[name]['added'] = datetime.now()
         try:
-            if len(self.batches[name]) > self.batch_size:
-                self.batches[name] = self.batches[name].set_index(['url'])
-                self.batches[name]['added'] = datetime.now()
-                self.batches[name].to_sql('t_stg_{}_results'.format(name), con=engine, if_exists='append')
-                self.batches[name] = pd.DataFrame()
-        except Exception as e:
-            self.batches[name] = pd.DataFrame()
-            logging.warning("failed row {}", e.args)
-            pass
+            self.batches[name].to_sql('t_stg_{}_results{appendix}'.format(name,
+                                                                          appendix=database_parameters.get(
+                                                                              "appendix")),
+                                      con=self.client,
+                                      if_exists='append')
+        except ProgrammingError as e:
+            self.handleFailedBatch(name, e)
+            self.insertBatch(name)
+        self.batches[name] = pd.DataFrame()
+
+    def handleFailedBatch(self, name, e):
+        table_name = 't_stg_{}_results{appendix}'.format(name, appendix=database_parameters.get("appendix"))
+        c = self.client.cursor()
+        string = e.args[0]
+        columns_to_add = list(filter(lambda: name == table_name, list(filter(lambda s: " " not in s, string.split('"')))))
+        cols = ",\n".join([f'add column {col} text' for col in columns_to_add])
+        query = f'alter table {table_name} \n {cols}'
+        logging.warning(f'failed batch, adding column {columns_to_add} to {table_name}')
+        c.execute(query)
+        c.commit()
