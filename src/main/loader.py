@@ -3,7 +3,7 @@ import os
 
 from kafka import KafkaConsumer, KafkaProducer
 import logging
-from settings import kafka_params
+from settings import kafka_params, subscribe_params
 from src.main.manager import ObjectManager
 from src.main.parser import ResultParser
 
@@ -12,7 +12,7 @@ class ResultLoader():
    # cacheManager = CacheManager()
     objectManager = ObjectManager()
     kafkaConsumer = KafkaConsumer(**kafka_params)
-    markets = f'.*-{kafka_params["topics"]}'
+    markets = f'.*-{subscribe_params["topics"]}'
 
     producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 

@@ -9,7 +9,10 @@ nanny_params = {
 }
 
 kafka_params = {
-    "bootstrap_servers": [os.getenv("KAFKA_ADDRESS", "localhost:29092")],
+    "bootstrap_servers": [os.getenv("KAFKA_ADDRESS", "localhost:29092")]
+}
+
+subscribe_params = {
     "topics": os.getenv("TOPICS", "results")
 }
 
