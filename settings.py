@@ -25,7 +25,12 @@ database_parameters = {
     "port": os.getenv("DATABASE_PORT", 5432),
     "database": os.getenv("DATABASE_NAME", "feeds"),
     "user": os.getenv("DATABASE_USER", "feeds"),
-    "password": os.getenv("DATABASE_PASS", "feeds"),
-    "prefix": os.getenv("PREFIX", "stg"),
+    "password": os.getenv("DATABASE_PASS", "feeds")
+}
+
+table_params = {
+    "prefix": os.getenv("TABLE_PREFIX", "stg"),
+    "type": os.getenv("TABLE_TYPE", "results"),
     "postix": ""
 }
+

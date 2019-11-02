@@ -33,4 +33,3 @@ class ResultLoader():
             row = ResultParser(feedName=feed, source=message.value).parseRow()
             self.objectManager.prepareRow(name=feed, row=row)
             self.objectManager.insertBatch(name=feed)
-
