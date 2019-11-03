@@ -56,13 +56,27 @@ class ObjectManager:
         """
         self.client.execute(definition)
 
-    def prepareRow(self, name, row):
+    def prepareRow(self, name: str, row: dict) -> None:
+        """
+        take a row and add it to the current batch
+
+        :param name: name of feed type
+        :param row: data dict
+        :return:
+        """
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.info("row prepared: {}".format(row))
 
-    def insertBatch(self, name, batchCheck=True):
+    def insertBatch(self, name: str, batchCheck: bool = True) -> None:
+        """
+        insert batch into database if batch is ready or batchCheck is false
+
+        :param name: feed name
+        :param batchCheck: should the batch be checked for size?
+        :return:
+        """
         if batchCheck and len(self.batches[name]) < self.batch_size:
             return
         self.batches[name] = self.batches[name].set_index(['url'])
@@ -76,10 +90,25 @@ class ObjectManager:
                 self.insertBatch(name)
         self.batches[name] = pd.DataFrame()
 
-    def getTableName(self, name):
+    def getTableName(self, name: str) -> str:
+        """
+        get the table name for feed name
+
+        :param name: the name of the feed
+        :return: the table name this process is inserting to
+        """
         return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, **table_params)
 
     def handleFailedBatch(self, name, e, attempts=0):
+        """
+        Handle failed batch when the column is not defined, whereby the error is parsed and the missing
+        tables names are created in `self.getTableName`.
+
+        :param name: name of feed
+        :param e: the exception
+        :param attempts: number of tries to take
+        :return:
+        """
         if attempts > 5:
             self.failedBatches[name] = self.failedBatches[name].append(self.batches[name])
             return False
