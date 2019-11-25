@@ -1,9 +1,13 @@
 import json
 import os
+from time import sleep
 
 from kafka import KafkaConsumer, KafkaProducer
 import logging
-from settings import kafka_params, subscribe_params
+from settings import subscribe_params
+from feed.settings import retry_params, kafka_params
+from kafka.errors import NoBrokersAvailable
+
 from src.main.manager import ObjectManager
 from src.main.parser import ResultParser
 
@@ -11,10 +15,22 @@ from src.main.parser import ResultParser
 class ResultLoader():
    # cacheManager = CacheManager()
     objectManager = ObjectManager()
-    kafkaConsumer = KafkaConsumer(**kafka_params)
+
     markets = f'.*-{subscribe_params["topics"]}'
 
     producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+    def __init__(self, attempts=0):
+        try:
+            self.kafkaProducer = KafkaProducer(**kafka_params)
+            self.kafkaConsumer = KafkaConsumer(**kafka_params)
+        except NoBrokersAvailable as e:
+            if attempts < retry_params.get("retry_params"):
+                sleep(retry_params.get("times"))
+                attempts += 1
+                logging.info(f'Result loader  is retyring to connect to kafka for the {attempts} time ')
+                self.__init__(attempts=attempts)
+            else:
+                raise e
 
     def consumeResults(self):
         self.kafkaConsumer.subscribe(pattern=self.markets)

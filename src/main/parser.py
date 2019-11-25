@@ -4,7 +4,7 @@ import bs4
 import requests
 from bs4 import Tag, NavigableString
 
-from settings import nanny_params
+from feed.settings import nanny_params
 
 
 class ResultParser:

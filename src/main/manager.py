@@ -13,7 +13,7 @@ from hazelcast.core import HazelcastJsonValue
 from psycopg2._psycopg import connection
 from sqlalchemy import create_engine
 
-from settings import database_parameters, table_params
+from feed.settings import database_parameters, table_params
 
 
 class CacheManager:
