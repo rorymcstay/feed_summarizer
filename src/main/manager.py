@@ -2,18 +2,13 @@ import json
 import logging
 from datetime import datetime
 
+import pandas as pd
+from feed.settings import database_parameters
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 
-import hazelcast
-import pandas as pd
-import psycopg2
-# from hazelcast import ClientConfig, HazelcastClient
-from hazelcast.core import HazelcastJsonValue
-from psycopg2._psycopg import connection
-from sqlalchemy import create_engine
-
-from feed.settings import database_parameters, table_params
+from settings import table_params
 
 
 class CacheManager:
