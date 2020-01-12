@@ -1,31 +1,15 @@
 import json
 import logging
 from datetime import datetime
-
 import pandas as pd
+
 from feed.settings import database_parameters
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 
 from settings import table_params
-
-
-class CacheManager:
-
-    def insertResult(self, name, result, key):
-        """
-        request the next set of results
-
-        :return:
-        """
-        pass
-
-
-#       map = self.client.get_map(name)
-#       map.put(key=key, value=HazelcastJsonValue(json.dumps(result)))
-
-#       logging.debug('inserted object result {}'.format(key))
 
 
 class ObjectManager:
@@ -64,7 +48,19 @@ class ObjectManager:
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.info("row prepared: {}".format(row))
 
-    def insertBatch(self, name: str, batchCheck: bool = True) -> None:
+    def prepareBatch(self, name: str):
+        """
+        prepare the batch for insertion to the database
+
+        @param name: the feed name
+        """
+        self.batches[name].index = self.batches[name]['url']
+        self.batches[name].index.name = 'url'
+        del self.batches[name]['url']
+        self.batches[name]['added'] = datetime.now()
+        self.batches[name] = self.batches[name].drop_duplicates()
+
+    def insertBatch(self, name: str, batchCheck: bool = True, retry: bool = False) -> None:
         """
         insert batch into database if batch is ready or batchCheck is false
 
@@ -74,15 +70,16 @@ class ObjectManager:
         """
         if batchCheck and len(self.batches[name]) < self.batch_size:
             return
-        self.batches[name] = self.batches[name].set_index(['url'])
-        self.batches[name]['added'] = datetime.now()
+        if not retry:
+            self.prepareBatch(name)
+
         try:
             self.batches[name].to_sql(self.getTableName(name),
                                       con=self.client,
                                       if_exists='append')
         except ProgrammingError as e:
             if self.handleFailedBatch(name, e):
-                self.insertBatch(name)
+                self.insertBatch(name, retry=True, batchCheck=False)
         self.batches[name] = pd.DataFrame()
 
     def getTableName(self, name: str) -> str:
@@ -99,6 +96,10 @@ class ObjectManager:
         Handle failed batch when the column is not defined, whereby the error is parsed and the missing
         tables names are created in `self.getTableName`.
 
+        parses the error
+
+            ' column "card_price" of relation "t_stg_results" does not exist
+
         :param name: name of feed
         :param e: the exception
         :param attempts: number of tries to take
@@ -108,12 +109,13 @@ class ObjectManager:
             self.failedBatches[name] = self.failedBatches[name].append(self.batches[name])
             return False
         table_name = self.getTableName(name)
-        string = e.args[0]
-        columns_to_add = list(filter(lambda na: na == table_name, list(filter(lambda s: " " not in s, string.split('"')))))
+        # split on 'relation' to get only column names which are not present
+        string = e.args[0].split('relation')[0]
+        columns_to_add = list(filter(lambda na: na != table_name, list(filter(lambda s: " " not in s, string.split('"')))))
+        cols = ",\n".join([f'add column "{col}" text' for col in columns_to_add])
+        logging.debug(f'adding columns {columns_to_add} to {table_name}')
+        query = f'alter table {table_name}\n    {cols}'
 
-        cols = ",\n".join([f'add column {col} text' for col in columns_to_add])
-        query = f'alter table {table_name} \n {cols}'
-
-        logging.warning(f'failed batch, adding column {columns_to_add} to {table_name}')
+        logging.warning(f'failed batch, adding column {columns_to_add} to {table_name}.')
         self.client.execute(query)
         return True

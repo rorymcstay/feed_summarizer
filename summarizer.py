@@ -3,7 +3,7 @@ import os
 
 from src.main.loader import ResultLoader
 
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
+logging.basicConfig(level=logging.INFO)
 #logging.FileHandler('/var/tmp/myapp.log')
 
 

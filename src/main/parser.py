@@ -9,11 +9,8 @@ from feed.settings import nanny_params
 
 class ResultParser:
 
-    def __init__(self, feedName, source):
-        r = requests.get(
-            "http://{host}:{port}/parametercontroller/getParameter/summarizer/{name}".format(**nanny_params,
-                                                                                              name=feedName))
-        self.params = r.json()
+    def __init__(self, source, params):
+        self.params = params
         self.soup = bs4.BeautifulSoup(source, "html.parser")
 
     def parseResult(self):
