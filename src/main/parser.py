@@ -6,6 +6,15 @@ from bs4 import Tag, NavigableString
 
 from feed.settings import nanny_params
 
+class Path:
+    def __init__(self):
+        pass 
+    def getName():
+        pass
+    def addStep(step: str, container):
+        if container == "LIST":
+            pass
+
 
 class ResultParser:
 
@@ -62,7 +71,6 @@ class ResultParser:
         return {item: finish}
 
     def _traverse(self, child, fields, images, fromClass=None):
-
         if isinstance(child, Tag):
             if child.name == 'img':
                 images.update({"image_".format(len(images) + 1): child.attrs.get("src")})

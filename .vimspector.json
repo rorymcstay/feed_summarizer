@@ -1,0 +1,21 @@
+{
+  "configurations": {
+    "run": {
+      "adapter": "debugpy",
+      "configuration": {
+        "name": "summarizer",
+        "type": "python",
+        "request": "launch",
+        "cwd": "${workspaceRoot}",
+        "python": "${workspaceRoot}/venv/bin/python3",
+        "stopOnEntry": true,
+        "console": "externalTerminal",
+        "debugOptions": [],
+        "program": "${workspaceRoot}/summarizer.py",
+        "env": {
+            
+        }
+      }
+    }
+  }
+}
