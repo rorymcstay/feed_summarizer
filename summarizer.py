@@ -1,22 +1,14 @@
 import logging
 import os
-
+import argparse
 from src.main.loader import ResultLoader
-from flask import Flask
 
-logging.basicConfig(level="DEBUG")
-#logging.FileHandler('/var/tmp/myapp.log')
+argparser = argparse.ArgumentParser("Transform data from kafak feed to flatten structure")
 
-
-logging.info("starting summarizer")
-
-app = Flask(__name__)
-
-
-ResultLoader.register(app)
-
+argparser.add_argument('--produceObjects', action='store_true', default=False)
 
 if __name__ == "__main__":
-    print(app.url_map)
-    app.run(host='0.0.0.0', port=os.getenv('FLASK_PORT', 5005))
-
+    rl = ResultLoader()
+    args = argparser.parse_args()
+    if args.produceObjects:
+        rl.produceObjects()

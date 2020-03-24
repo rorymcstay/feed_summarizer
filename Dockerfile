@@ -19,6 +19,7 @@ RUN pip install -r ./requirements.txt
 COPY src ./src
 COPY settings.py ./settings.py
 COPY summarizer.py ./app.py
+RUN mkdir /tmp/logs
+RUN touch /tmp/logs/summarizer.log
 
-# Entrypoint
-CMD ["python", "./app.py" ]
+CMD tail -f /tmp/logs/summarizer.log

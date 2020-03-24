@@ -1,9 +1,9 @@
 import json
-import logging
 from datetime import datetime
 import pandas as pd
 
 from feed.settings import database_parameters
+from feed.logger import getLogger
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -11,6 +11,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from settings import table_params
 
+logging = getLogger('summarizer', toFile=True)
 
 class ObjectManager:
     logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
@@ -46,7 +47,7 @@ class ObjectManager:
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
-        logging.info("row prepared: {}".format(row))
+        logging.debug("row prepared: {}".format(row))
 
     def prepareBatch(self, name: str):
         """
@@ -60,7 +61,7 @@ class ObjectManager:
         self.batches[name]['added'] = datetime.now()
         self.batches[name] = self.batches[name].drop_duplicates()
 
-    def insertBatch(self, name: str, batchCheck: bool = True, retry: bool = False) -> None:
+    def insertBatch(self, name: str, sizeCheck: bool = True, retry: bool = False) -> None:
         """
         insert batch into database if batch is ready or batchCheck is false
 
@@ -68,18 +69,20 @@ class ObjectManager:
         :param batchCheck: should the batch be checked for size?
         :return:
         """
-        if batchCheck and len(self.batches[name]) < self.batch_size:
+        if sizeCheck and len(self.batches[name]) < self.batch_size:
             return
         if not retry:
             self.prepareBatch(name)
-
         try:
+            logging.info(f'inserting batch of size {len(self.batches[name])} for {name}')
             self.batches[name].to_sql(self.getTableName(name),
                                       con=self.client,
                                       if_exists='append')
         except ProgrammingError as e:
+            logging.info(f'failed inserting batch {name}')
             if self.handleFailedBatch(name, e):
-                self.insertBatch(name, retry=True, batchCheck=False)
+                self.insertBatch(name, retry=True, sizeCheck=False)
+        logging.info(f'Succesfully inserted batch for {name}')
         self.batches[name] = pd.DataFrame()
 
     def getTableName(self, name: str) -> str:

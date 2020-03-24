@@ -3,12 +3,14 @@ import re
 import bs4
 import requests
 from bs4 import Tag, NavigableString
-
+from feed.logger import getLogger
 from feed.settings import nanny_params
+
+logging = getLogger('summarizer', toFile=True)
 
 class Path:
     def __init__(self):
-        pass 
+        pass
     def getName():
         pass
     def addStep(step: str, container):
@@ -28,6 +30,9 @@ class ResultParser:
         for item in self.params:
             items.update(self.getItem(item, self.soup))
         return items
+
+    def selectPath(path):
+        pass
 
     def getItem(self, item: str, start: Tag) -> dict:
         """
