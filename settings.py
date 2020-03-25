@@ -6,7 +6,8 @@ subscribe_params = {
 
 
 table_params = {
-    "prefix": os.getenv("TABLE_PREFIX", "stg"),
+    "stgprefix": os.getenv("STG_TABLE_PREFIX", "stg"),
+    "fctprefix": os.getenv("FCT_TABLE_PREFIX", 'fct'),
     "type": os.getenv("TABLE_TYPE", "results"),
     "postfix": ""
 }

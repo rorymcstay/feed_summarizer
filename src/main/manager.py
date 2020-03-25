@@ -8,6 +8,7 @@ from feed.logger import getLogger
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
+from src.main.pathmanager import PathManager
 
 from settings import table_params
 
@@ -22,6 +23,7 @@ class ObjectManager:
     batch_size = 100
     batches = dict()
     failedBatches = dict()
+    pathManager = PathManager()
 
     def _generateTable(self, name, number_fields):
         nl = ",\n      "
@@ -46,6 +48,8 @@ class ObjectManager:
         """
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
+        if self.pathManager.hasMap(name):
+            row = self.pathManager.tryMap(row)
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.debug("row prepared: {}".format(row))
 
@@ -83,7 +87,9 @@ class ObjectManager:
             if self.handleFailedBatch(name, e):
                 self.insertBatch(name, retry=True, sizeCheck=False)
         logging.info(f'Succesfully inserted batch for {name}')
-        self.batches[name] = pd.DataFrame()
+        self.batches.pop(name, None)
+        self.pathManager.updateMappings(name)
+
 
     def getTableName(self, name: str) -> str:
         """
@@ -92,7 +98,8 @@ class ObjectManager:
         :param name: the name of the feed
         :return: the table name this process is inserting to
         """
-        return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, **table_params)
+        prefix = table_params.get('fctprefix') if self.pathManager.hasMap(name) else table_params.get('stgprefix')
+        return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, prefix=prefix **table_params)
 
     def handleFailedBatch(self, name, e, attempts=0):
         """
