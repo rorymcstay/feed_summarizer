@@ -21,7 +21,7 @@ class PathManager:
         req = r.get("http://{host}:{port}/mappingmanager/getMapping/{name}/v/1".format(name=name,**nanny_params))
         if req.status_code == 404:
             return []
-        return req.json()
+        return req.json().get('value').get('mapping')
 
     def hasMap(self,name):
         if self.maps.get(name):
@@ -29,14 +29,15 @@ class PathManager:
         else:
             return False
 
-    def updateMaps(name):
+    def updateMaps(self, name):
         mapping = self.getMapping(name)
         self.maps.update({name: mapping})
 
-    def tryMap(name, row):
+    def tryMap(self, name, row):
         mapping = self.maps.get(name)
-        mapIt = map(lambda row: {row.get('final_column_name'): row.get(col.get('staging_column_name'))}, row)
+        mapIt = map(lambda col: {col.get('final_column_name'): row.get(col.get('staging_column_name'))}, mapping)
         out = {}
         for mapped in list(mapIt):
             out.update(mapped)
+            out.update({'url': row.get('url'), 'added': row.get('')})
         return out

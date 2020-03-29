@@ -20,7 +20,7 @@ class ObjectManager:
     client: Engine = create_engine(dsn)
     client.autocommit = True
     numberFields = {}
-    batch_size = 100
+    batch_size = 10
     batches = dict()
     failedBatches = dict()
     pathManager = PathManager()
@@ -49,7 +49,7 @@ class ObjectManager:
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
         if self.pathManager.hasMap(name):
-            row = self.pathManager.tryMap(row)
+            row = self.pathManager.tryMap(name, row)
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.debug("row prepared: {}".format(row))
 
@@ -88,7 +88,7 @@ class ObjectManager:
                 self.insertBatch(name, retry=True, sizeCheck=False)
         logging.info(f'Succesfully inserted batch for {name}')
         self.batches.pop(name, None)
-        self.pathManager.updateMappings(name)
+        self.pathManager.updateMaps(name)
 
 
     def getTableName(self, name: str) -> str:
@@ -99,7 +99,7 @@ class ObjectManager:
         :return: the table name this process is inserting to
         """
         prefix = table_params.get('fctprefix') if self.pathManager.hasMap(name) else table_params.get('stgprefix')
-        return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, prefix=prefix **table_params)
+        return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, prefix=prefix, **table_params)
 
     def handleFailedBatch(self, name, e, attempts=0):
         """

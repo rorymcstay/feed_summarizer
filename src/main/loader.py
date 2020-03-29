@@ -102,4 +102,5 @@ class ResultLoader(FlaskView):
             collected += 1
         self.objectManager.insertBatch(name=feed,  sizeCheck=False)
         self.running = False
+        logging.info('finished processing')
         return Response(json.dumps({"collected": collected}), status=200, mimetype='application/json')
