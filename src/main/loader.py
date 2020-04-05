@@ -15,7 +15,7 @@ from flask_classy import FlaskView
 from src.main.manager import ObjectManager
 from src.main.parser import ResultParser
 
-logging = getLogger('summarizer', toFile=True)
+logging = getLogger(__name__)
 
 
 class ResultLoader(FlaskView):
@@ -100,6 +100,7 @@ class ResultLoader(FlaskView):
             logging.info(f'parsed object number: {collected}')
             self.objectManager.insertBatch(name=feed)
             collected += 1
+        self.lastCollected = collected
         self.objectManager.insertBatch(name=feed,  sizeCheck=False)
         self.running = False
         logging.info('finished processing')

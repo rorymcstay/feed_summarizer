@@ -22,4 +22,4 @@ COPY summarizer.py ./app.py
 RUN mkdir /tmp/logs
 RUN touch /tmp/logs/summarizer.log
 
-CMD tail -f /tmp/logs/summarizer.log
+CMD ["python", "app.py", "--headlessMode"]

@@ -1,4 +1,4 @@
-feed_utils==0.1.17
+feed_utils==0.2.1
 requests
 sqlalchemy
 psycopg2
