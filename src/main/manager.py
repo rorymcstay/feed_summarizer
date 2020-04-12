@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 import pandas as pd
+import requests
 
 from feed.settings import database_parameters
 from feed.logger import getLogger
@@ -22,6 +23,8 @@ class ObjectManager:
     numberFields = {}
     batch_size = 10
     batches = dict()
+    max_non_mapped_batches = 3
+    non_mapped_count = {}
     failedBatches = dict()
     pathManager = PathManager()
 
@@ -50,6 +53,13 @@ class ObjectManager:
             self.batches.update({name: pd.DataFrame()})
         if self.pathManager.hasMap(name):
             row = self.pathManager.tryMap(name, row)
+        elif self.non_mapped_count.get(name, 0) <= self.max_non_mapped_batches:
+            self.non_mapped_count[name] = self.non_mapped_count.get(name, 0) + 1
+        else:
+            try:
+                requests.get('http://{host}:{port}feedjobmanager/setNeedsMappin/{name}'.format(name=name, **command_params))
+            except Exception as ex:
+                pass
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.debug("row prepared: {}".format(row))
 

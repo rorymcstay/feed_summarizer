@@ -103,7 +103,7 @@ class ResultParser:
             field = child.text
         else:
             field = str(child).strip(' \n')
-        if field:
+        if field and field.strip() != '':
             fields.update({fromClass: field})
 
     def parseRow(self):
