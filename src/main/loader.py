@@ -85,12 +85,15 @@ class ResultLoader(FlaskView):
             return Response(json.dumps({"running": True}), mimetype='application/json')
         return Response(json.dumps(out), status=200, mimetype='application/json')
 
+
+
     def produceObjects(self):
         logging.info(f'subscribing to markets: {self.markets}')
         self.kafkaConsumer.subscribe(pattern=self.markets)
         params = {}
         collected = 0
         for message in self.kafkaConsumer:
+
             self.running = True
             feed = message.topic.split("-")[0]
             if params.get(feed) is None:

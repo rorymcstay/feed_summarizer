@@ -5,6 +5,8 @@ import requests
 from bs4 import Tag, NavigableString
 from feed.logger import getLogger
 from feed.settings import nanny_params
+from src.main.manager import ObjectManager
+from feed.actionchains import ActionChain
 
 logging = getLogger('summarizer', toFile=True)
 
@@ -18,11 +20,14 @@ class Path:
             pass
 
 
-class ResultParser:
+class ResultParser(ActionChain):
 
-    def __init__(self, source, params):
-        self.params = params
-        self.soup = bs4.BeautifulSoup(source, "html.parser")
+
+    def __init__(self, driver, *args, **kwargs):
+        self.driver = ObjectManager()
+        super().__init__(*args, **kwargs)
+
+
 
     def parseResult(self):
         items = {}
@@ -106,7 +111,9 @@ class ResultParser:
         if field and field.strip() != '':
             fields.update({fromClass: field})
 
-    def parseRow(self):
+    def onCaptureAction(self, action):
+        self.params = params
+        self.soup = bs4.BeautifulSoup(action.data, "html.parser")
         fields = {}
         images = {}
         index = re.findall(r'href="[^\"]+', str(self.soup))[0].split("=")[1].strip('"')
@@ -114,4 +121,5 @@ class ResultParser:
             self._traverse(child, fields, images)
         fields.update({'url': index})
         fields.update(images)
-        return fields
+        self.driver.prepareRow(name=action.captureName, row=fields)
+        self.driver.insertBatch(name=action.captureName)

@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 from src.main.pathmanager import PathManager
 
-from settings import table_params,
+from settings import table_params
 
 logging = getLogger('summarizer', toFile=True)
 
