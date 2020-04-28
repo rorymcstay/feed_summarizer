@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 import requests
 
-from feed.settings import database_parameters
+from feed.settings import database_parameters, nanny_params
 from feed.logger import getLogger
 
 from sqlalchemy import create_engine
@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 from src.main.pathmanager import PathManager
 
-from settings import table_params
+from settings import table_params,
 
 logging = getLogger('summarizer', toFile=True)
 
@@ -57,7 +57,7 @@ class ObjectManager:
             self.non_mapped_count[name] = self.non_mapped_count.get(name, 0) + 1
         else:
             try:
-                requests.get('http://{host}:{port}feedjobmanager/setNeedsMappin/{name}'.format(name=name, **command_params))
+                requests.get('http://{host}:{port}/mappingmanager/setNeedsMapping/{name}'.format(name=name, **nanny_params))
             except Exception as ex:
                 pass
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
