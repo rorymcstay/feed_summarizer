@@ -8,7 +8,7 @@ class PathManager:
 
     def __init__(self):
         self.maps = {}
-        req = r.get("http://{host}:{port}/parametercontroller/getFeeds/".format(**nanny_params))
+        req = r.get("http://{host}:{port}/actionsmanager/getActionChains/".format(**nanny_params))
         for name in req.json():
             mapping = self.getMapping(name)
             if len(mapping) == 0:
