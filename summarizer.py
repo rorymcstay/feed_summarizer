@@ -1,12 +1,21 @@
 from feed.logger import getLogger
+import logging
 import os
 import argparse
 from src.main.parser import ResultParser
 from feed.actionchains import KafkaActionSubscription
 
-logging = getLogger(__name__)
+logger = logging.getLogger()
 
-logging.info(f'starting summarizer')
+logger.setLevel(logging.DEBUG)
+logging.getLogger('kafka').setLevel(logging.WARNING)
+
+sh = logging.StreamHandler()
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s -%(message)s |%(filename)s:%(lineno)d')
+sh.setFormatter(formatter)
+logger.addHandler(sh)
+
 
 argparser = argparse.ArgumentParser("Transform data from kafak feed to flatten structure")
 
@@ -19,5 +28,7 @@ class CaptureActionRunner(KafkaActionSubscription):
         KafkaActionSubscription.__init__(self, topic='summarizer-route', implementation=ResultParser)
 
 if __name__ == '__main__':
+    logging.info('Beginning capture-crawler initialisation')
     runner = CaptureActionRunner()
+    logging.info(f'initialised {runner}')
     runner.main()

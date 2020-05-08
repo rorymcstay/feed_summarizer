@@ -27,8 +27,6 @@ class ResultParser(ActionChain):
         self.driver = ObjectManager()
         super().__init__(*args, **kwargs)
 
-
-
     def parseResult(self):
         items = {}
         self.params.pop("name")
@@ -112,14 +110,21 @@ class ResultParser(ActionChain):
             fields.update({fromClass: field})
 
     def onCaptureAction(self, action):
-        self.params = params
+        logging.info(f'ResultParser::onCaptureAction()')
         self.soup = bs4.BeautifulSoup(action.data, "html.parser")
         fields = {}
         images = {}
-        index = re.findall(r'href="[^\"]+', str(self.soup))[0].split("=")[1].strip('"')
+        # TODO should use bs4 here instead
+        index = re.findall(r'href="[^\"]+', str(self.soup))
+        logging.info(f'ResultParser::onCaptureAction(): have potentialUrls=[{index}]')
+        url=None
+        if len(index) != 0:
+            url = index[0].split("=")[1].strip('"')
+        else:
+            logging.info(f'{type(self).__name__}::onCaptureAction(): failed to find urls. ')
         for child in self.soup:
             self._traverse(child, fields, images)
-        fields.update({'url': index})
+        fields.update({'url': url})
         fields.update(images)
         self.driver.prepareRow(name=action.captureName, row=fields)
         self.driver.insertBatch(name=action.captureName)
