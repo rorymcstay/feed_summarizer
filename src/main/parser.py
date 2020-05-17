@@ -109,6 +109,12 @@ class ResultParser(ActionChain):
         if field and field.strip() != '':
             fields.update({fromClass: field})
 
+    class Return:
+        def __init__(self, row, action):
+            self.action=action
+            self.row=row
+
+
     def onCaptureAction(self, action):
         logging.info(f'ResultParser::onCaptureAction()')
         self.soup = bs4.BeautifulSoup(action.data, "html.parser")
