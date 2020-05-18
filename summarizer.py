@@ -29,6 +29,7 @@ class CaptureActionRunner(KafkaActionSubscription):
 
 if __name__ == '__main__':
     logging.info('Beginning capture-crawler initialisation')
+    logging.info("\n".join([f'{key}={os.environ[key]}' for key in os.environ]))
     runner = CaptureActionRunner()
     logging.info(f'initialised {runner}')
     runner.main()
