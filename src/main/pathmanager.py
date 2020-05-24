@@ -8,14 +8,17 @@ class PathManager:
 
     def __init__(self):
         self.maps = {}
-        req = r.get("http://{host}:{port}/actionsmanager/getActionChains/".format(**nanny_params))
-        for name in req.json():
-            mapping = self.getMapping(name)
-            if len(mapping) == 0:
-                continue
-            else:
-                logging.info(f'have map {mapping} for {name}')
-                self.maps.update({name: mapping})
+        try:
+            req = r.get("http://{host}:{port}/actionsmanager/getActionChains/".format(**nanny_params))
+            for name in req.json():
+                mapping = self.getMapping(name)
+                if len(mapping) == 0:
+                    continue
+                else:
+                    logging.info(f'have map {mapping} for {name}')
+                    self.maps.update({name: mapping})
+        except Exception as ex:
+            logging.warning(f'Failed to communicate with nanny for actionchain details {ex.args}')
 
     def getMapping(self, name):
         req = r.get("http://{host}:{port}/mappingmanager/getMapping/{name}/v/1".format(name=name,**nanny_params))
