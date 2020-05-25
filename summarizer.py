@@ -9,7 +9,7 @@ from logging.config import dictConfig
 
 class CaptureActionRunner(KafkaActionSubscription):
     def __init__(self):
-        queue = f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-summarizer-route'
+        queue = f'summarizer-route'
         logging.info(f'subscribing to {queue}')
         KafkaActionSubscription.__init__(self, topic=queue, implementation=ResultParser)
 
