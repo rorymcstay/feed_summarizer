@@ -7,6 +7,7 @@ from feed.logger import getLogger
 from feed.settings import nanny_params
 from src.main.manager import ObjectManager
 from feed.actionchains import ActionChain
+from feed.actiontypes import NeedsMappingWarning
 
 logging = getLogger('summarizer', toFile=True)
 
@@ -114,7 +115,6 @@ class ResultParser(ActionChain):
             self.action=action
             self.row=row
 
-
     def onCaptureAction(self, action):
         logging.info(f'ResultParser::onCaptureAction()')
         self.soup = bs4.BeautifulSoup(action.data, "html.parser")
@@ -132,5 +132,11 @@ class ResultParser(ActionChain):
             self._traverse(child, fields, images)
         fields.update({'url': url})
         fields.update(images)
-        self.driver.prepareRow(name=action.captureName, row=fields)
+        try:
+            self.driver.prepareRow(name=action.captureName, row=fields)
+        except NeedsMappingWarning as ex:
+            ex.chainName = self.name
+            ex.position = action.position
+            ex.actionHash = action.getActionHash()
+            raise ex
         self.driver.insertBatch(name=action.captureName)

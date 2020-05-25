@@ -5,6 +5,7 @@ import requests
 
 from feed.settings import database_parameters, nanny_params
 from feed.logger import getLogger
+from feed.actiontypes import NeedsMappingWarning
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -60,6 +61,7 @@ class ObjectManager:
                 requests.get('http://{host}:{port}/mappingmanager/setNeedsMapping/{name}'.format(name=name, **nanny_params))
             except Exception as ex:
                 pass
+            raise NeedsMappingWarning(message='You must set a mapping to continue capturing data.')
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.debug("row prepared: {}".format(row))
 
