@@ -25,8 +25,9 @@ class ResultParser(ActionChain):
 
 
     def __init__(self, driver, *args, **kwargs):
-        self.driver = ObjectManager()
+        self.driver = ObjectManager(self.nannyClient)
         super().__init__(*args, **kwargs)
+
 
     def parseResult(self):
         items = {}
@@ -111,9 +112,12 @@ class ResultParser(ActionChain):
             fields.update({fromClass: field})
 
     class Return:
-        def __init__(self, row, action):
+        def __init__(self, row, action, chainName, userID):
             self.action=action
             self.row=row
+            self.chainName=chainName
+            self.userID = userID
+
 
     def onCaptureAction(self, action):
         logging.info(f'ResultParser::onCaptureAction()')
@@ -132,11 +136,4 @@ class ResultParser(ActionChain):
             self._traverse(child, fields, images)
         fields.update({'url': url})
         fields.update(images)
-        try:
-            self.driver.prepareRow(name=action.captureName, row=fields)
-        except NeedsMappingWarning as ex:
-            ex.chainName = self.name
-            ex.position = action.position
-            ex.actionHash = action.getActionHash()
-            raise ex
-        self.driver.insertBatch(name=action.captureName)
+        return [ResultParser.Return(row=fields, action=action, chainName=self.name, userID=self.userID)]

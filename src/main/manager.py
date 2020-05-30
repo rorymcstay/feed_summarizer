@@ -5,29 +5,69 @@ import requests
 
 from feed.settings import database_parameters, nanny_params
 from feed.logger import getLogger
+from feed.service import Client
 from feed.actiontypes import NeedsMappingWarning
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
-from src.main.pathmanager import PathManager
 
 from settings import table_params
 
 logging = getLogger('summarizer', toFile=True)
 
 class ObjectManager:
-    logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
-    dsn = 'postgresql://{user}:{password}@{host}:{port}/{database}'.format(**database_parameters)
-    client: Engine = create_engine(dsn)
-    client.autocommit = True
-    numberFields = {}
     batch_size = 10
-    batches = dict()
     max_non_mapped_batches = 3
-    non_mapped_count = {}
-    failedBatches = dict()
-    pathManager = PathManager()
+    def __init__(self):
+        logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
+        dsn = 'postgresql://{user}:{password}@{host}:{port}/{database}'.format(**database_parameters)
+        self.client: Engine = create_engine(dsn)
+        self.client.autocommit = True
+        self.numberFields = {}
+        self.batches = dict()
+        self.non_mapped_count = {}
+        self.failedBatches = dict()
+        self.maps = {}
+        self.nannyClient = Client('nanny', check_health=False, behalf=None, chainName=None, **nanny_params)
+        try:
+            req = r.get("http://{host}:{port}/mappingmanager/getMappingNames/".format(**nanny_params))
+            for name in req.json():
+                self.nannyClient.behalf = name.get('userID')
+                mapping = self.getMapping(name.get('name'))
+                if len(mapping) == 0:
+                    continue
+                else:
+                    logging.info(f'have map {mapping} for {name}')
+                    self.maps.update({f'{name.get("userID")}:{name.get("userID")}': mapping})
+        except Exception as ex:
+            logging.warning(f'Failed to communicate with nanny for actionchain details {ex.args}')
+
+    def getMapping(self, name):
+        req = self.nannyClient.get(f'/mappingmanager/getMapping/{name}/v/1', resp=True, error=[])
+        return req.get('value').get('mapping')
+
+    def get_map_key(self, name):
+        return f'{self.nannyClient.behalf}:{name}'
+
+    def hasMap(self, name):
+        if self.maps.get(self.get_map_key(name)):
+            return True
+        else:
+            return False
+
+    def updateMaps(self, name):
+        mapping = self.getMapping(name)
+        self.maps.update({self.get_map_key(name): mapping})
+
+    def tryMap(self, name, row):
+        mapping = self.maps.get(self.get_map_key(name))
+        mapIt = map(lambda col: {col.get('final_column_name'): row.get(col.get('staging_column_name'))}, mapping)
+        out = {}
+        for mapped in list(mapIt):
+            out.update(mapped)
+            out.update({'url': row.get('url'), 'added': row.get('')})
+        return out
 
     def _generateTable(self, name, number_fields):
         nl = ",\n      "
@@ -42,6 +82,10 @@ class ObjectManager:
         """
         self.client.execute(definition)
 
+    def updateClients(self, chainName, userID):
+        self.nannyClient.behalf = userID
+        self.nannyClient.chainName = chainName
+
     def prepareRow(self, name: str, row: dict) -> None:
         """
         take a row and add it to the current batch
@@ -52,13 +96,13 @@ class ObjectManager:
         """
         if name not in self.batches.keys():
             self.batches.update({name: pd.DataFrame()})
-        if self.pathManager.hasMap(name):
-            row = self.pathManager.tryMap(name, row)
+        if self.hasMap(name):
+            row = self.tryMap(name, row)
         elif self.non_mapped_count.get(name, 0) <= self.max_non_mapped_batches:
             self.non_mapped_count[name] = self.non_mapped_count.get(name, 0) + 1
         else:
             try:
-                requests.get('http://{host}:{port}/mappingmanager/setNeedsMapping/{name}'.format(name=name, **nanny_params))
+                self.nannyClient.get(f'/mappingmanager/setNeedsMapping/{name}')
             except Exception as ex:
                 pass
             raise NeedsMappingWarning(message='You must set a mapping to continue capturing data.')
@@ -100,7 +144,7 @@ class ObjectManager:
                 self.insertBatch(name, retry=True, sizeCheck=False)
         logging.info(f'Succesfully inserted batch for {name}')
         self.batches.pop(name, None)
-        self.pathManager.updateMaps(name)
+        self.updateMaps(name)
 
 
     def getTableName(self, name: str) -> str:
@@ -110,7 +154,7 @@ class ObjectManager:
         :param name: the name of the feed
         :return: the table name this process is inserting to
         """
-        prefix = table_params.get('fctprefix') if self.pathManager.hasMap(name) else table_params.get('stgprefix')
+        prefix = table_params.get('fctprefix') if self.hasMap(name) else table_params.get('stgprefix')
         return 't_{prefix}_{name}_{type}{postfix}'.format(name=name, prefix=prefix, **table_params)
 
     def handleFailedBatch(self, name, e, attempts=0):

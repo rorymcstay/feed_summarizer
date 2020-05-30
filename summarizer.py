@@ -7,11 +7,22 @@ from feed.settings import nanny_params, logger_settings_dict
 from logging.config import dictConfig
 
 
-class CaptureActionRunner(KafkaActionSubscription):
+class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
     def __init__(self):
         queue = f'summarizer-route'
         logging.info(f'subscribing to {queue}')
         KafkaActionSubscription.__init__(self, topic=queue, implementation=ResultParser)
+        ObjectManager.__init__()
+
+    def onCaptureActionCallback(self, data: ResultParser.Return):
+        self.updateClients(chainName=data.chainName, userID=data.userID)
+        try:
+            self.prepareRow(name=data.action.captureName, row=data.row)
+        except NeedsMappingWarning as ex:
+            ex.position = action.position
+            ex.actionHash = action.getActionHash()
+            raise ex
+        self.insertBatch(name=action.captureName)
 
 if __name__ == '__main__':
     dictConfig(logger_settings_dict)
