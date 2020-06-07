@@ -25,9 +25,16 @@ class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
         self.insertBatch(name=action.captureName)
 
 if __name__ == '__main__':
-    dictConfig(logger_settings_dict)
+    dictConfig(logger_settings_dict('root'))
 
-    logging.getLogger("urllib3").setLevel("INFO")
+    logging.getLogger('conn').setLevel('WARNING')
+    logging.getLogger('urllib').setLevel('WARNING')
+    logging.getLogger('parser').setLevel('WARNING')
+    logging.getLogger('metrics').setLevel('WARNING')
+    logging.getLogger('connectionpool').setLevel('WARNING')
+    logging.getLogger('kafka').setLevel('WARNING')
+    logging.getLogger('config').setLevel('WARNING')
+    logging.info("####### Environment #######")
 
     logging.info("####### Environment #######")
     logging.info(f'nanny: {nanny_params}')
