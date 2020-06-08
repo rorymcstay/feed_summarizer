@@ -5,6 +5,7 @@ from src.main.parser import ResultParser
 from feed.actionchains import KafkaActionSubscription
 from feed.settings import nanny_params, logger_settings_dict
 from logging.config import dictConfig
+from src.main.manager import ObjectManager
 
 
 class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
@@ -12,7 +13,7 @@ class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
         queue = f'summarizer-route'
         logging.info(f'subscribing to {queue}')
         KafkaActionSubscription.__init__(self, topic=queue, implementation=ResultParser)
-        ObjectManager.__init__()
+        ObjectManager.__init__(self)
 
     def onCaptureActionCallback(self, data: ResultParser.Return):
         self.updateClients(chainName=data.chainName, userID=data.userID)
