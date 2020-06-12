@@ -15,7 +15,7 @@ class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
         KafkaActionSubscription.__init__(self, topic=queue, implementation=ResultParser)
         ObjectManager.__init__(self)
 
-    def onCaptureActionCallback(self, data: ResultParser.Return):
+    def onCaptureActionCallback(self, data: ResultParser.Return, **kwargs):
         self.updateClients(chainName=data.chainName, userID=data.userID)
         try:
             self.prepareRow(name=data.action.captureName, row=data.row)
