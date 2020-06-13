@@ -19,7 +19,7 @@ logging = getLogger('summarizer', toFile=True)
 class ObjectManager:
     batch_size = 10
     max_non_mapped_batches = 3
-    def __init__(self):
+    def __init__(self, nannyClient):
         logging.info("connecting to database: {}".format(json.dumps(database_parameters, indent=4)))
         dsn = 'postgresql://{user}:{password}@{host}:{port}/{database}'.format(**database_parameters)
         self.client: Engine = create_engine(dsn)
@@ -29,11 +29,10 @@ class ObjectManager:
         self.non_mapped_count = {}
         self.failedBatches = dict()
         self.maps = {}
-        self.nannyClient = Client('nanny', check_health=False, behalf=None, chainName=None, **nanny_params)
+        self.nannyClient = nannyClient
         try:
             req = r.get("http://{host}:{port}/mappingmanager/getMappingNames/".format(**nanny_params))
             for name in req.json():
-                self.nannyClient.behalf = name.get('userID')
                 mapping = self.getMapping(name.get('name'))
                 if len(mapping) == 0:
                     continue

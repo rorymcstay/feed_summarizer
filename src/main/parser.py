@@ -5,7 +5,6 @@ import requests
 from bs4 import Tag, NavigableString
 from feed.logger import getLogger
 from feed.settings import nanny_params
-from src.main.manager import ObjectManager
 from feed.actionchains import ActionChain
 from feed.actiontypes import NeedsMappingWarning
 
@@ -25,7 +24,6 @@ class ResultParser(ActionChain):
 
 
     def __init__(self, driver, *args, **kwargs):
-        self.driver = ObjectManager(self.nannyClient)
         super().__init__(*args, **kwargs)
 
 
