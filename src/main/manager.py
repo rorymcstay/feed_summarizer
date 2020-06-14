@@ -4,7 +4,6 @@ import pandas as pd
 import requests
 
 from feed.settings import database_parameters, nanny_params
-from feed.logger import getLogger
 from feed.service import Client
 from feed.actiontypes import NeedsMappingWarning
 
@@ -13,8 +12,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import ProgrammingError
 
 from settings import table_params
+import logging
 
-logging = getLogger('summarizer', toFile=True)
 
 class ObjectManager:
     batch_size = 10
@@ -43,8 +42,8 @@ class ObjectManager:
             logging.warning(f'Failed to communicate with nanny for actionchain details {ex.args}')
 
     def getMapping(self, name):
-        req = self.nannyClient.get(f'/mappingmanager/getMapping/{name}/v/1', resp=True, error=[])
-        return req.get('value').get('mapping')
+        req = self.nannyClient.get(f'/mappingmanager/getMapping/{name}/v/1', resp=True, error={})
+        return req.get('value', {'mapping': []}).get('mapping')
 
     def get_map_key(self, name):
         return f'{self.nannyClient.behalf}:{name}'
@@ -97,7 +96,7 @@ class ObjectManager:
             self.batches.update({name: pd.DataFrame()})
         if self.hasMap(name):
             row = self.tryMap(name, row)
-        elif self.non_mapped_count.get(name, 0) <= self.max_non_mapped_batches:
+        elif self.non_mapped_count.get(name, 0) <= (self.max_non_mapped_batches * self.batch_size):
             self.non_mapped_count[name] = self.non_mapped_count.get(name, 0) + 1
         else:
             try:

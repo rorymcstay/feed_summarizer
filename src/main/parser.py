@@ -3,6 +3,7 @@ import re
 import bs4
 import requests
 from bs4 import Tag, NavigableString
+from feed.actionchains import CaptureAction
 from feed.logger import getLogger
 from feed.settings import nanny_params
 from feed.actionchains import ActionChain
@@ -25,6 +26,7 @@ class ResultParser(ActionChain):
 
     def __init__(self, driver, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.backupKeyIncrement = 0
 
 
     def parseResult(self):
@@ -117,9 +119,9 @@ class ResultParser(ActionChain):
             self.userID = userID
 
 
-    def onCaptureAction(self, action):
+    def onCaptureAction(self, action: CaptureAction):
         logging.info(f'ResultParser::onCaptureAction()')
-        self.soup = bs4.BeautifulSoup(action.data, "html.parser")
+        self.soup = bs4.BeautifulSoup(action.data[0], "html.parser")
         fields = {}
         images = {}
         # TODO should use bs4 here instead
@@ -129,9 +131,15 @@ class ResultParser(ActionChain):
         if len(index) != 0:
             url = index[0].split("=")[1].strip('"')
         else:
-            logging.info(f'{type(self).__name__}::onCaptureAction(): failed to find urls. ')
+            logging.info(f'{type(self).__name__}::onCaptureAction(): failed to find urls.')
         for child in self.soup:
             self._traverse(child, fields, images)
+        if url is None:
+            self.backupKeyIncrement += 1
+            logging.warning(f'No valid url found for {action}, using parent tag meta')
+            url = f'{action.data[1].get("href", action.backupKey)}-{self.backupKeyIncrement}'
+            logging.info(f'Using {url} for {action}, taken from parent')
         fields.update({'url': url})
         fields.update(images)
         return [ResultParser.Return(row=fields, action=action, chainName=self.name, userID=self.userID)]
+
