@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 import pandas as pd
-import requests
+import requests as r
 
 from feed.settings import database_parameters, nanny_params
 from feed.service import Client

@@ -14,7 +14,7 @@ class CaptureActionRunner(KafkaActionSubscription, ObjectManager):
     def __init__(self):
         queue = f'summarizer-route'
         logging.info(f'subscribing to {queue}')
-        KafkaActionSubscription.__init__(self, topic=queue, implementation=ResultParser)
+        KafkaActionSubscription.__init__(self, queue, implementation=ResultParser)
         ObjectManager.__init__(self, Client("nanny", **nanny_params))
 
     def onCaptureActionCallback(self, data: ResultParser.Return, **kwargs):
