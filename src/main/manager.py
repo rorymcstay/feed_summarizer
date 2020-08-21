@@ -16,6 +16,10 @@ import logging
 
 
 class ObjectManager:
+    """
+    manages the maps for CaptureAction running, and inserts the results
+    into the database.
+    """
     batch_size = 10
     max_non_mapped_batches = 3
     def __init__(self, nannyClient):
@@ -68,6 +72,9 @@ class ObjectManager:
         return out
 
     def _generateTable(self, name, number_fields):
+        """
+        unused
+        """
         nl = ",\n      "
         self.numberFields.update({name: number_fields})
         fields = map(lambda number: f'field_{number} VARCHAR(256)', range(number_fields))
@@ -81,6 +88,7 @@ class ObjectManager:
         self.client.execute(definition)
 
     def updateClients(self, chainName, userID):
+        # this method is superfulous as it is done on initialisation already
         self.nannyClient.behalf = userID
         self.nannyClient.chainName = chainName
 
@@ -88,22 +96,29 @@ class ObjectManager:
         """
         take a row and add it to the current batch
 
-        :param name: name of feed type
-        :param row: data dict
+        :param name: captureName, the name of the feed.
+        :param row: name value pairs of column names to value.
         :return:
         """
         if name not in self.batches.keys():
+            # check if we have a batch for this capture, 
+            # if not make an empty one.
             self.batches.update({name: pd.DataFrame()})
         if self.hasMap(name):
+            # if we have a map, use it.
             row = self.tryMap(name, row)
         elif self.non_mapped_count.get(name, 0) <= (self.max_non_mapped_batches * self.batch_size):
+            # if no map, and within non mapped limit increment the non mapped count
             self.non_mapped_count[name] = self.non_mapped_count.get(name, 0) + 1
         else:
+            # otherwise, raise needs mapping warning.
             try:
+                # this nanny functionality no longer needed with the way we now have defined exceptions.
                 self.nannyClient.get(f'/mappingmanager/setNeedsMapping/{name}')
             except Exception as ex:
                 pass
             raise NeedsMappingWarning(message='You must set a mapping to continue capturing data.')
+        # add the row to the batch
         self.batches[name] = self.batches[name].append(row, ignore_index=True)
         logging.debug("row prepared: {}".format(row))
 
@@ -157,7 +172,7 @@ class ObjectManager:
 
     def handleFailedBatch(self, name, e, attempts=0):
         """
-        Handle failed batch when the column is not defined, whereby the error is parsed and the missing
+        Handle failed batch when the column is not defined in the database, whereby the error is parsed and the missing
         tables names are created in `self.getTableName`.
 
         parses the error

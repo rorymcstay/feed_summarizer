@@ -7,6 +7,7 @@ from feed.actionchains import CaptureAction
 from feed.logger import getLogger
 from feed.settings import nanny_params
 from feed.actionchains import ActionChain
+from feed.actiontypes import CaptureAction
 from feed.actiontypes import NeedsMappingWarning
 
 logging = getLogger('summarizer', toFile=True)
@@ -80,7 +81,17 @@ class ResultParser(ActionChain):
                 finish = None
         return {item: finish}
 
-    def _traverse(self, child, fields, images, fromClass=None):
+    def _traverse(self, child: Tag, fields: dict, images: dict, fromClass=None):
+        """
+        recursively flatten a html structure into key value pairs based on tag name.
+        :param: child: the BeautifulSoup representation of html TODO: handle NavigableString and string.
+        :param: fields: empty dict of datafields
+        :param: images: empty dict of images
+        :param: fromClass: only used on recursive calls, the class html to search recusively is called.
+
+        TODO: We should build up a path here incase it isuseful later.
+
+        """
         if isinstance(child, Tag):
             if child.name == 'img':
                 images.update({"image_".format(len(images) + 1): child.attrs.get("src")})
@@ -101,6 +112,7 @@ class ResultParser(ActionChain):
         if count > 0:
             fromClass = "{}_{}".format(fromClass, count + 1)
         try:
+            # will break if not Tag, if str should take that.
             text = child.text
         except:
             text = ''
@@ -112,12 +124,14 @@ class ResultParser(ActionChain):
             fields.update({fromClass: field})
 
     class Return:
-        def __init__(self, row, action, chainName, userID):
+        """
+        Return type for the capture action.
+        """
+        def __init__(self, row: dict, action: CaptureAction, chainName: str, userID: str):
             self.action=action
             self.row=row
             self.chainName=chainName
             self.userID = userID
-
 
     def onCaptureAction(self, action: CaptureAction):
         logging.info(f'ResultParser::onCaptureAction()')
@@ -125,6 +139,7 @@ class ResultParser(ActionChain):
         fields = {}
         images = {}
         # TODO should use bs4 here instead
+        # get all the links in a list
         index = re.findall(r'href="[^\"]+', str(self.soup))
         logging.info(f'ResultParser::onCaptureAction(): have potentialUrls=[{index}]')
         url=None
@@ -135,6 +150,7 @@ class ResultParser(ActionChain):
         for child in self.soup:
             self._traverse(child, fields, images)
         if url is None:
+            # we use the back up url
             self.backupKeyIncrement += 1
             logging.warning(f'No valid url found for {action}, using parent tag meta')
             url = f'{action.data[1].get("href", action.backupKey)}-{self.backupKeyIncrement}'
